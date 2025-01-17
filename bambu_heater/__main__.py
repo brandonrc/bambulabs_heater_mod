@@ -11,6 +11,17 @@ cur_temp = None
 cur_tray = None
 filament_type = None
 
+# LUT for filament types and their corresponding chamber temperatures
+FILAMENT_TEMP_MAP = {
+    "PLA": 35,
+    "PETG": 50,
+    "TPU": 40,
+    "PP": 55,
+    "PPA": 60,
+    "PAHT": 70,
+    # Add more as needed
+}
+
 async def update_status(data):
     global cur_temp, cur_tray, filament_type
     chamber_temp = data.get("print", {}).get("chamber_temper")
@@ -28,23 +39,34 @@ async def update_status(data):
     if filament_type is not None:
         print(f"Filament Type: {filament_type}")
 
-async def monitor_tempature(temp, device):
-    global cur_temp
-    is_on =  await device.get_status()
+
+async def monitor_tempature(device):
+    global cur_temp, filament_type
+    is_on = await device.get_status()
     while True:
         if cur_temp is not None:
-            if float(cur_temp) < temp and cur_tray is not None:
-                if not is_on:
-                    print("Turning heater on")
-                    await device.turn_on()
-                    is_on = True
+            # Lookup the target temperature; default to 35°C if filament type is unknown
+            target_temp = FILAMENT_TEMP_MAP.get(filament_type.upper(), 35 if filament_type else None)
+
+            if target_temp is not None:
+                if cur_temp < target_temp and cur_tray is not None:
+                    if not is_on:
+                        print(f"Turning heater on (target: {target_temp}°C, current: {cur_temp}°C)")
+                        await device.turn_on()
+                        is_on = True
+                else:
+                    if is_on:
+                        print(f"Turning heater off (target: {target_temp}°C, current: {cur_temp}°C)")
+                        is_on = False
+                        await device.turn_off()
             else:
+                # Handle the case for materials explicitly requiring no heat (set to None)
+                print("Unknown filament type. Turning heater off for safety.")
                 if is_on:
-                    print("Turning heater off")
-                    is_on = False
                     await device.turn_off()
+                    is_on = False
         else:
-            print("Waiting for first temp reading")
+            print("Waiting for valid temperature and filament type readings.")
         await asyncio.sleep(1)
 
 
@@ -96,8 +118,7 @@ async def main():
 
     await asyncio.gather(
         grab_status(host, port, username, password, topic, update_status),
-        monitor_tempature(temp=60, 
-                          device=tplink_device),
+        monitor_tempature(device=tplink_device),
     )
 
 
