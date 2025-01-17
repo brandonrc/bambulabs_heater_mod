@@ -1,0 +1,55 @@
+*.jpg
+key.json
+# Python specific
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyp
+*.pyo
+*.pyd
+*.pyp
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Setuptools distribution folders
+build/
+dist/
+*.egg-info/
+.eggs/
+wheelhouse/
+
+# Pytest cache
+.cache/
+
+# PyCharm
+.idea/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# MyPy cache
+.mypy_cache/
+
+# Rust specific
+target/
+Cargo.lock
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Miscellaneous
+*.log
+*.log.*
+*.bak
+*.swp
+*~
