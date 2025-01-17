@@ -4,6 +4,35 @@ import argparse
 from bambu_heater.utils.temp_helper import grab_temperature
 from bambu_heater.utils.serial_helper import get_serial
 import sys
+from bambu_heater.devices.tplink_power import TPLINKHS300
+
+
+cur_temp = None
+
+async def update_temp(chamber_temp):
+    global cur_temp
+    cur_temp = float(chamber_temp)
+    print(f"Chamber Temperature: {chamber_temp}")
+
+async def monitor_tempature(temp, device):
+    global cur_temp
+    is_on =  await device.get_status()
+    while True:
+        if cur_temp is not None:
+            if float(cur_temp) < temp:
+                if not is_on:
+                    print("Turning heater on")
+                    await device.turn_on()
+                    is_on = True
+            else:
+                if is_on:
+                    print("Turning heater off")
+                    is_on = False
+                    await device.turn_off()
+        else:
+            print("Waiting for first temp reading")
+        await asyncio.sleep(1)
+
 
 # Main application
 async def main():
@@ -12,6 +41,12 @@ async def main():
     parser.add_argument("--host", help="IP address of the Bambu Lab Printer")
     parser.add_argument("--password", help="Access code for the Bambu Lab Printer")
     args = parser.parse_args()
+
+    tplink_device = TPLINKHS300(
+        name="TP-Link Power Strip",
+        host="192.168.42.37",
+        outlet_index=0  # Control outlet 0 (first outlet)
+    )
 
     # Determine the host and password with priority: CLI > Environment
     host = args.host or os.getenv("BAMBU_PRINTER_IP")
@@ -43,9 +78,46 @@ async def main():
     topic = f"device/{serial}/report"
 
     # Run the MQTT subscription
-    await grab_temperature(host, port, username, password, topic)
+   
+
+    await asyncio.gather(
+        grab_temperature(host, port, username, password, topic, update_temp),
+        monitor_tempature(temp=60, 
+                          device=tplink_device),
+    )
 
 
 # Entry point
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+'''
+└─$ mosquitto_sub -h 192.168.42.87 -p 8883 \
+  -u 'bblp' -P '39646532' \
+  --cafile ./blcert.pem \
+  --insecure \
+  -t device/00M09D492601136/report | jq '.print.ams.ams[0].tray[1].tray_type'
+  '''
+
+'''
+┌──(env)─(khan㉿Brandons-MacBook-Pro)-[~/scratch/bambu-x1c-heater]
+└─$ mosquitto_sub -h 192.168.42.87 -p 8883 \
+  -u 'bblp' -P '39646532' \
+  --cafile ./blcert.pem \
+  --insecure \
+  -t device/00M09D492601136/report | jq '.print.ams.tray_now'
+
+"0"
+"0"
+"0"
+"0"
+"255"
+"1"
+"1"
+"1"
+"1"
+"1"
+"1"
+"1"
+'''
