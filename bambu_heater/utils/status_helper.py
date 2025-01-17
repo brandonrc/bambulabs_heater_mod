@@ -1,11 +1,11 @@
 
 import ssl
 from aiomqtt import Client
+import json
 
 
 
-
-async def grab_temperature(host, port, username, password, topic, callback):
+async def grab_status(host, port, username, password, topic, callback):
     # Create an SSL context that doesn't verify certificates
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
@@ -21,10 +21,7 @@ async def grab_temperature(host, port, username, password, topic, callback):
                 # print(f"Received: {payload}")
 
                 # Extract temperature
-                import json
                 data = json.loads(payload)
-                chamber_temp = data.get("print", {}).get("chamber_temper")
-                if chamber_temp is not None:
-                    await callback(chamber_temp)
+                await callback(data)
             except Exception as e:
                 print(f"Error processing message: {e}")

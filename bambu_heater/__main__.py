@@ -1,25 +1,39 @@
 import asyncio
 import os
 import argparse
-from bambu_heater.utils.temp_helper import grab_temperature
+from bambu_heater.utils.status_helper import grab_status
 from bambu_heater.utils.serial_helper import get_serial
 import sys
 from bambu_heater.devices.tplink_power import TPLINKHS300
 
 
 cur_temp = None
+cur_tray = None
+filament_type = None
 
-async def update_temp(chamber_temp):
-    global cur_temp
-    cur_temp = float(chamber_temp)
-    print(f"Chamber Temperature: {chamber_temp}")
+async def update_status(data):
+    global cur_temp, cur_tray, filament_type
+    chamber_temp = data.get("print", {}).get("chamber_temper")
+    # .print.ams.tray_now
+    tray_now = data.get("print", {}).get("ams", {}).get("tray_now")
+    # '.print.ams.ams[0].tray[1].tray_type'
+    if tray_now != '255':
+        cur_tray = tray_now
+        filament_type = data.get("print", {}).get("ams", {})[0].get("ams", {})[int(tray_now)].get("tray_type")
+    else:
+        cur_tray = None
+    if chamber_temp is not None:
+        cur_temp = float(chamber_temp)
+        print(f"Chamber Temperature: {chamber_temp}")
+    if filament_type is not None:
+        print(f"Filament Type: {filament_type}")
 
 async def monitor_tempature(temp, device):
     global cur_temp
     is_on =  await device.get_status()
     while True:
         if cur_temp is not None:
-            if float(cur_temp) < temp:
+            if float(cur_temp) < temp and cur_tray is not None:
                 if not is_on:
                     print("Turning heater on")
                     await device.turn_on()
@@ -81,7 +95,7 @@ async def main():
    
 
     await asyncio.gather(
-        grab_temperature(host, port, username, password, topic, update_temp),
+        grab_status(host, port, username, password, topic, update_status),
         monitor_tempature(temp=60, 
                           device=tplink_device),
     )
