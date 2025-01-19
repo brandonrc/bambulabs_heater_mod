@@ -19,20 +19,24 @@ FILAMENT_TEMP_MAP = {
     "PP": 55,
     "PPA": 60,
     "PAHT": 70,
+    "PA-CF": 60
     # Add more as needed
 }
 
 async def update_status(data):
     global cur_temp, cur_tray, filament_type
     chamber_temp = data.get("print", {}).get("chamber_temper")
+    print(chamber_temp)
     # .print.ams.tray_now
     tray_now = data.get("print", {}).get("ams", {}).get("tray_now")
+    print(tray_now)
     # '.print.ams.ams[0].tray[1].tray_type'
     if tray_now != '255':
         cur_tray = tray_now
-        filament_type = data.get("print", {}).get("ams", {})[0].get("ams", {})[int(tray_now)].get("tray_type")
+        filament_type = data.get("print", {}).get("ams", {}).get("ams")[0].get("tray")[int(cur_tray)].get("tray_type")
+        print(filament_type)
     else:
-        cur_tray = None
+        filament_type = None
     if chamber_temp is not None:
         cur_temp = float(chamber_temp)
         print(f"Chamber Temperature: {chamber_temp}")
@@ -46,7 +50,10 @@ async def monitor_tempature(device):
     while True:
         if cur_temp is not None:
             # Lookup the target temperature; default to 35°C if filament type is unknown
-            target_temp = FILAMENT_TEMP_MAP.get(filament_type.upper(), 35 if filament_type else None)
+            if filament_type is not None:
+                target_temp = FILAMENT_TEMP_MAP.get(filament_type.upper(), 35 if filament_type else None)
+            else:
+                target_temp = None
 
             if target_temp is not None:
                 if cur_temp < target_temp and cur_tray is not None:

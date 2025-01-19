@@ -18,8 +18,6 @@ async def grab_status(host, port, username, password, topic, callback):
             try:
                 # Parse the JSON payload
                 payload = message.payload.decode("utf-8")
-                # print(f"Received: {payload}")
-
                 # Extract temperature
                 data = json.loads(payload)
                 await callback(data)
