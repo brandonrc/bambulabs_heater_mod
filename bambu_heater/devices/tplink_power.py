@@ -1,5 +1,6 @@
 from kasa import SmartStrip, SmartDeviceException
 from bambu_heater.devices.base_power import BasePowerDevice
+import asyncio
 
 class TPLINKHS300(BasePowerDevice):
     def __init__(self, name, host, outlet_index, *args, **kwargs):
