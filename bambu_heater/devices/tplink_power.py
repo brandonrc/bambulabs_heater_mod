@@ -21,6 +21,13 @@ class TPLINKHS300(BasePowerDevice):
                 else:
                     print(f"Failed to connect to the device {self.host} after {retries} attempts.")
                     raise
+            except ConnectionResetError:
+                print(f"Failed to connect to the device {self.host} after {retries} attempts.")
+                if attempt < retries - 1:
+                    await asyncio.sleep(2)
+                else:
+                    print(f"Failed to handle the unexpected error after {retries} attempts.")
+                    raise
             except Exception as e:
                 print(f"Unexpected error: {e}. Retrying...")
                 if attempt < retries - 1:
